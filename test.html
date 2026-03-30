@@ -1015,7 +1015,7 @@ function toggleMatDropdown(e) {
 }
  
 function selectMatiere(mat, icon, label, e) {
-  e.stopPropagation();
+  if (e && e.stopPropagation) e.stopPropagation();
   currentMatiere = mat;
   document.getElementById('navMatiereIcon').textContent = icon;
   document.getElementById('navMatiereLabel').textContent = label;
@@ -1029,10 +1029,40 @@ function selectMatiere(mat, icon, label, e) {
     quizData = null;
     switchView('histoire');
   }
-  // Update URL
-  const newUrl = mat === 'editeur' ? window.location.pathname : `${window.location.pathname}?mat=${mat}`;
-  history.replaceState(null, '', newUrl);
+  // Update URL — une URL distincte par catégorie
+  const newUrl = mat === 'editeur'
+    ? window.location.pathname
+    : `${window.location.pathname}?mat=${encodeURIComponent(mat)}`;
+  history.pushState({ mat }, '', newUrl);
 }
+
+// Gestion du bouton Retour / Avant du navigateur
+window.addEventListener('popstate', (event) => {
+  const mat = (event.state && event.state.mat) || 'editeur';
+  const matiereData = {
+    editeur:  { icon: '📝', label: 'Français' },
+    histoire: { icon: '🏛️', label: 'Histoire' },
+    physique: { icon: '⚗️', label: 'Physique-Chimie' },
+    figures:  { icon: '🎭', label: 'Figures de style' }
+  };
+  const data = matiereData[mat];
+  if (!data) return;
+  currentMatiere = mat;
+  document.getElementById('navMatiereIcon').textContent = data.icon;
+  document.getElementById('navMatiereLabel').textContent = data.label;
+  document.querySelectorAll('.dropdown-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.mat === mat);
+  });
+  if (mat === 'editeur') {
+    switchView('editeur');
+  } else if (mat === 'figures') {
+    switchView('figures');
+  } else {
+    quizLoaded = false;
+    quizData = null;
+    switchView('histoire');
+  }
+});
  
 function closeAllDropdowns() {
   document.getElementById('navDropdown').classList.remove('open');
@@ -1393,7 +1423,10 @@ loadTextes().then(() => {
   };
   if (mat && matiereData[mat]) {
     const data = matiereData[mat];
-    selectMatiere(mat, data.icon, data.label, {});
+    selectMatiere(mat, data.icon, data.label, null);
+  } else {
+    // Enregistre l'état initial pour que popstate fonctionne avec le retour
+    history.replaceState({ mat: 'editeur' }, '', window.location.href);
   }
 });
 </script>
